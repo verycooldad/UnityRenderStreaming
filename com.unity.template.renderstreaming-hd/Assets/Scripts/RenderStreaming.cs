@@ -178,7 +178,7 @@ namespace Unity.RenderStreaming
             foreach (var sender in m_mapTrackAndSenderList[track])
             {
                 RTCRtpSendParameters parameters = sender.GetParameters();
-                foreach (var encoding in parameters.Encodings)
+                foreach (var encoding in parameters.encodings)
                 {
                     if (bitrate != null) encoding.maxBitrate = bitrate;
                     if (framerate != null) encoding.maxFramerate = framerate;
@@ -441,12 +441,15 @@ namespace Unity.RenderStreaming
                 return;
             }
 
-            RTCIceCandidate _candidate = default;
-            _candidate.candidate = e.candidate;
-            _candidate.sdpMLineIndex = e.sdpMLineIndex;
-            _candidate.sdpMid = e.sdpMid;
+            RTCIceCandidateInit init = new RTCIceCandidateInit
+            {
+                candidate = e.candidate,
+                sdpMLineIndex = e.sdpMLineIndex,
+                sdpMid = e.sdpMid
+            };
+            RTCIceCandidate _candidate = new RTCIceCandidate(init);
 
-            pc.AddIceCandidate(ref _candidate);
+            pc.AddIceCandidate(_candidate);
         }
 
         void OnDataChannel(RTCPeerConnection pc, RTCDataChannel channel)
