@@ -1,4 +1,5 @@
 using System;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading;
 using Unity.WebRTC;
@@ -69,7 +70,6 @@ namespace Unity.RenderStreaming.Signaling
 
         //todo: not implemented
         public event OnConnectHandler OnCreateConnection;
-        public event OnDisconnectHandler OnDestroyConnection;
         public event OnOfferHandler OnOffer;
         #pragma warning disable 0067
         // this event is never used in this class
@@ -110,14 +110,9 @@ namespace Unity.RenderStreaming.Signaling
             WSSend(routedMessage);
         }
 
-        public void OpenConnection(string connectionId)
+        public void CreateConnection()
         {
             this.WSSend("{\"type\":\"connect\"}");
-        }
-
-        public void CloseConnection(string connectionId)
-        {
-            throw new NotImplementedException();
         }
 
         private void WSManage()

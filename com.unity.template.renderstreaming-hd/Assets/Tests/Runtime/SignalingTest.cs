@@ -14,9 +14,25 @@ namespace Unity.RenderStreaming
 {
     [TestFixture(typeof(WebSocketSignaling))]
     [TestFixture(typeof(HttpSignaling))]
-    [ConditionalIgnore(ConditionalIgnore.IL2CPP, "Process.Start does not implement in IL2CPP.")]
+    [Ignore("todo: need to upgrade com.unity.renderstreaming version 2.2")]
     public class SignalingTest : IPrebuildSetup
     {
+        static bool Wait(Func<bool> condition, int millisecondsTimeout = 1000, int millisecondsInterval = 100)
+        {
+            if (millisecondsTimeout < millisecondsInterval)
+            {
+                throw new ArgumentException();
+            }
+
+            int time = 0;
+            while (!condition() && millisecondsTimeout > time)
+            {
+                Thread.Sleep(millisecondsInterval);
+                time += millisecondsInterval;
+            }
+            return millisecondsTimeout > time;
+        }
+
         private readonly Type m_SignalingType;
         private Process m_ServerProcess;
         private RTCSessionDescription m_DescOffer;
@@ -36,42 +52,37 @@ namespace Unity.RenderStreaming
             m_SignalingType = type;
         }
 
+        //        // todo:(kazuki) need to upgrade com.unity.renderstreaming version 2.2
+        //        // this is override method for IPrebuildSetup
         public void Setup()
         {
-#if UNITY_EDITOR
-            string dir = System.IO.Directory.GetCurrentDirectory();
-            string fileName = System.IO.Path.Combine(dir, Editor.WebAppDownloader.GetFileName());
-            if (System.IO.File.Exists(fileName) || System.IO.File.Exists(TestUtility.GetWebAppLocationFromEnv()))
-            {
-                // already exists.
-                return;
-            }
-
-            bool downloadRaised = false;
-            Editor.WebAppDownloader.DownloadCurrentVersionWebApp(dir, success => { downloadRaised = true; });
-            TestUtility.Wait(() => downloadRaised, 10000);
-#endif
+            //#if UNITY_EDITOR
+            //            string dir = System.IO.Directory.GetCurrentDirectory();
+            //            string fileName = Editor.WebAppDownloader.GetFileName();
+            //            if (System.IO.File.Exists(System.IO.Path.Combine(dir, fileName)))
+            //            {
+            //                // already exists.
+            //                return;
+            //            }
+            //            bool downloadRaised = false;
+            //            Editor.WebAppDownloader.DownloadCurrentVersionWebApp(dir, success => { downloadRaised = true; });
+            //            Wait(() => downloadRaised, 10000);
+            //#endif
         }
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
+            // todo: download webapp for signaling test
             m_ServerProcess = new Process();
 
-            string fileName = TestUtility.GetWebAppLocationFromEnv();
+            string dir = System.IO.Directory.GetCurrentDirectory();
+            string filename = System.IO.Path.Combine(dir, "webserver.exe");
 
-            if (string.IsNullOrEmpty(fileName))
-            {
-                Debug.Log($"webapp file not found in {fileName}");
-                string dir = System.IO.Directory.GetCurrentDirectory();
-                fileName = System.IO.Path.Combine(dir, TestUtility.GetFileName());
-            }
-
-            Assert.IsTrue(System.IO.File.Exists(fileName), $"webapp file not found in {fileName}");
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 WindowStyle = ProcessWindowStyle.Hidden,
-                FileName = fileName,
+                FileName = filename,
                 UseShellExecute = false
             };
 
@@ -173,8 +184,8 @@ namespace Unity.RenderStreaming
             signaling1.Start();
             yield return new WaitUntil(() => startRaised1);
 
-            signaling1.OnCreateConnection += (s, connectionId, peerExists) => { connectionId1 = connectionId; };
-            signaling1.OpenConnection(Guid.NewGuid().ToString());
+            signaling1.OnCreateConnection += (s, connectionId) => { connectionId1 = connectionId; };
+            signaling1.CreateConnection();
             yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1));
             Assert.IsNotEmpty(connectionId1);
         }
@@ -186,7 +197,6 @@ namespace Unity.RenderStreaming
             bool startRaised2 = false;
             bool offerRaised = false;
             string connectionId1 = null;
-            string connectionId2 = null;
 
             signaling1.OnStart += s => { startRaised1 = true; };
             signaling2.OnStart += s => { startRaised2 = true; };
@@ -194,11 +204,9 @@ namespace Unity.RenderStreaming
             signaling2.Start();
             yield return new WaitUntil(() => startRaised1 && startRaised2);
 
-            signaling1.OnCreateConnection += (s, connectionId, peerExists) => { connectionId1 = connectionId; };
-            signaling1.OpenConnection(Guid.NewGuid().ToString());
-            signaling2.OnCreateConnection += (s, connectionId, peerExists) => { connectionId2 = connectionId; };
-            signaling2.OpenConnection(Guid.NewGuid().ToString());
-            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1) && !string.IsNullOrEmpty(connectionId2));
+            signaling1.OnCreateConnection += (s, connectionId) => { connectionId1 = connectionId; };
+            signaling1.CreateConnection();
+            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1));
 
             signaling2.OnOffer += (s, e) => { offerRaised = true; };
             signaling1.SendOffer(connectionId1, m_DescOffer);
@@ -214,7 +222,6 @@ namespace Unity.RenderStreaming
             bool offerRaised = false;
             bool answerRaised = false;
             string connectionId1 = null;
-            string connectionId2 = null;
 
             signaling1.OnStart += s => { startRaised1 = true; };
             signaling2.OnStart += s => { startRaised2 = true; };
@@ -222,11 +229,9 @@ namespace Unity.RenderStreaming
             signaling2.Start();
             yield return new WaitUntil(() => startRaised1 && startRaised2);
 
-            signaling1.OnCreateConnection += (s, connectionId, peerExists) => { connectionId1 = connectionId; };
-            signaling1.OpenConnection(Guid.NewGuid().ToString());
-            signaling2.OnCreateConnection += (s, connectionId, peerExists) => { connectionId2 = connectionId; };
-            signaling2.OpenConnection(Guid.NewGuid().ToString());
-            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1) && !string.IsNullOrEmpty(connectionId2));
+            signaling1.OnCreateConnection += (s, connectionId) => { connectionId1 = connectionId; };
+            signaling1.CreateConnection();
+            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1));
 
             signaling2.OnOffer += (s, e) => { offerRaised = true; };
             signaling1.SendOffer(connectionId1, m_DescOffer);
@@ -247,7 +252,6 @@ namespace Unity.RenderStreaming
             bool candidateRaised1 = false;
             bool candidateRaised2 = false;
             string connectionId1 = null;
-            string connectionId2 = null;
 
             signaling1.OnStart += s => { startRaised1 = true; };
             signaling2.OnStart += s => { startRaised2 = true; };
@@ -255,11 +259,9 @@ namespace Unity.RenderStreaming
             signaling2.Start();
             yield return new WaitUntil(() => startRaised1 && startRaised2);
 
-            signaling1.OnCreateConnection += (s, connectionId, peerExists) => { connectionId1 = connectionId; };
-            signaling1.OpenConnection(Guid.NewGuid().ToString());
-            signaling2.OnCreateConnection += (s, connectionId, peerExists) => { connectionId2 = connectionId; };
-            signaling2.OpenConnection(Guid.NewGuid().ToString());
-            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1) && !string.IsNullOrEmpty(connectionId2));
+            signaling1.OnCreateConnection += (s, connectionId) => { connectionId1 = connectionId; };
+            signaling1.CreateConnection();
+            yield return new WaitUntil(() => !string.IsNullOrEmpty(connectionId1));
 
             signaling2.OnOffer += (s, e) => { offerRaised = true; };
             signaling1.SendOffer(connectionId1, m_DescOffer);

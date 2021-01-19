@@ -1,5 +1,3 @@
-import uuid4 from 'https://cdn.jsdelivr.net/gh/tracker1/node-uuid4/browser.mjs';
-
 export default class Signaling extends EventTarget {
 
   constructor() {
@@ -26,15 +24,13 @@ export default class Signaling extends EventTarget {
     const session = await createResponse.json();
     this.sessionId = session.sessionId;
 
-    const id = uuid4();
-    const connection = await this.createConnection(id);
+    const res = await this.createConnection();
+    const connection = await res.json();
+    this.connectionId = connection.connectionId;
 
     this.loopGetOffer();
     this.loopGetAnswer();
     this.loopGetCandidate();
-
-    this.connectionId = connection.connectionId;
-    return this.connectionId;
   }
 
   async loopGetOffer() {
@@ -102,37 +98,30 @@ export default class Signaling extends EventTarget {
     this.sessionId = null;
   }
 
-  async createConnection(connectionId) {
-    const data = { 'connectionId': connectionId };
-    const res = await fetch(this.url('connection'), { method: 'PUT', headers: this.headers(), body: JSON.stringify(data) });
-    const json = await res.json();
-    this.dispatchEvent(new CustomEvent('connect', {detail: json}));
-    return json;
+  async createConnection() {
+    return await fetch(this.url('connection'), { method: 'PUT', headers: this.headers() });
   };
-  async deleteConnection(connectionId) {
-    const data = { 'connectionId': connectionId };
-    const res = await fetch(this.url('connection'), { method: 'DELETE', headers: this.headers(), body: JSON.stringify(data) });
-    const json = await res.json();
-    this.dispatchEvent(new CustomEvent('disconnect', {detail: json}));
-    return json;
+  async deleteConnection() {
+    const data = { 'connectionId': this.connectionId };
+    return await fetch(this.url('connection'), { method: 'DELETE', headers: this.headers(), body: JSON.stringify(data) });
   };
 
-  async sendOffer(connectionId, sdp) {
-    const data = { 'sdp': sdp, 'connectionId': connectionId };
+  async sendOffer(sdp) {
+    const data = { 'sdp': sdp, 'connectionId': this.connectionId };
     await fetch(this.url('offer'), { method: 'POST', headers: this.headers(), body: JSON.stringify(data) });
   };
 
-  async sendAnswer(connectionId, sdp) {
-    const data = { 'sdp': sdp, 'connectionId': connectionId };
+  async sendAnswer(sdp) {
+    const data = { 'sdp': sdp, 'connectionId': this.connectionId };
     await fetch(this.url('answer'), { method: 'POST', headers: this.headers(), body: JSON.stringify(data) });
   };
 
-  async sendCandidate(connectionId, candidate, sdpMid, sdpMLineIndex) {
+  async sendCandidate(candidate, sdpMid, sdpMLineIndex) {
     const data = {
       'candidate': candidate,
       'sdpMLineIndex': sdpMLineIndex,
       'sdpMid': sdpMid,
-      'connectionId': connectionId
+      'connectionId': this.connectionId
     };
     await fetch(this.url('candidate'), { method: 'POST', headers: this.headers(), body: JSON.stringify(data) });
   };
@@ -163,8 +152,7 @@ export class WebSocketSignaling extends EventTarget {
     this.connectionId = null;
 
     this.websocket.onopen = () => {
-      const id = uuid4();
-      this.websocket.send(JSON.stringify({ type: "connect", connectionId: id }));
+      this.websocket.send(JSON.stringify({ type: "connect" }));
     }
 
     this.websocket.onmessage = (event) => {
@@ -178,10 +166,8 @@ export class WebSocketSignaling extends EventTarget {
       switch (msg.type) {
         case "connect":
           this.connectionId = msg.connectionId;
-          this.dispatchEvent(new CustomEvent('connect', { detail: msg }));
           break;
         case "disconnect":
-          this.dispatchEvent(new CustomEvent('disconnect', { detail: msg }));
           break;
         case "offer":
           this.dispatchEvent(new CustomEvent('offer', { detail: msg.data }));
@@ -203,47 +189,34 @@ export class WebSocketSignaling extends EventTarget {
     while(this.connectionId == null){
       await sleep(100);
     }
-    return this.connectionId;
   }
 
   stop() {
     this.websocket.send(JSON.stringify({ type: "disconnect", from: this.connectionId }));
   }
 
-  createConnection(connectionId) {
-    const sendJson = JSON.stringify({ type: "connect", connectionId: connectionId });
-    console.log(sendJson);
-    this.websocket.send(sendJson);
-  };
-
-  deleteConnection(connectionId) {
-    const sendJson = JSON.stringify({ type: "disconnect", connectionId: connectionId });
-    console.log(sendJson);
-    this.websocket.send(sendJson);
-  };
-
-  sendOffer(connectionId, sdp) {
-    const data = { 'sdp': sdp, 'connectionId': connectionId };
-    const sendJson = JSON.stringify({ type: "offer", from: connectionId, data: data });
+  sendOffer(sdp) {
+    const data = { 'sdp': sdp, 'connectionId': this.connectionId };
+    const sendJson = JSON.stringify({ type: "offer", from: this.connectionId, data: data });
     console.log(sendJson);
     this.websocket.send(sendJson);
   }
 
-  sendAnswer(connectionId, sdp) {
-    const data = { 'sdp': sdp, 'connectionId': connectionId };
-    const sendJson = JSON.stringify({ type: "answer", from: connectionId, data: data });
+  sendAnswer(sdp) {
+    const data = { 'sdp': sdp, 'connectionId': this.connectionId };
+    const sendJson = JSON.stringify({ type: "answer", from: this.connectionId, data: data });
     console.log(sendJson);
     this.websocket.send(sendJson);
   }
 
-  sendCandidate(connectionId, candidate, sdpMLineIndex, sdpMid) {
+  sendCandidate(candidate, sdpMLineIndex, sdpMid) {
     const data = {
       'candidate': candidate,
       'sdpMLineIndex': sdpMLineIndex,
       'sdpMid': sdpMid,
-      'connectionId': connectionId
+      'connectionId': this.connectionId
     };
-    const sendJson = JSON.stringify({ type: "candidate", from: connectionId, data: data });
+    const sendJson = JSON.stringify({ type: "candidate", from: this.connectionId, data: data });
     console.log(sendJson);
     this.websocket.send(sendJson);
   }

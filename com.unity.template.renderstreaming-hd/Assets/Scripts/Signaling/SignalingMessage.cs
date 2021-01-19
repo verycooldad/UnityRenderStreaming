@@ -12,7 +12,7 @@ namespace Unity.RenderStreaming
         public string message;
         public string sessionId;
         public string connectionId;
-        public bool peerExists;
+        public string peerId;
         public string sdp;
         public string type;
         public string candidate;
@@ -47,13 +47,6 @@ namespace Unity.RenderStreaming
     class CreateConnectionResData
     {
         public string connectionId;
-        public bool peerExists;
-    }
-
-    [Serializable]
-    class DestroyConnectionResData
-    {
-        public string connectionId;
     }
 
     [Serializable]
@@ -68,7 +61,7 @@ namespace Unity.RenderStreaming
         public DescData[] answers;
     }
 
-
+    
     [Serializable]
     class CandidateContainerResDataList
     {
