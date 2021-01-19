@@ -95,6 +95,12 @@ namespace Unity.RenderStreaming
         public void OneTimeTearDown()
         {
             m_ServerProcess.Kill();
+            while (!m_ServerProcess.HasExited)
+            {
+                m_ServerProcess.Refresh();
+            }
+            m_ServerProcess.Dispose();
+            m_ServerProcess = null;
         }
 
         ISignaling CreateSignaling(Type type, SynchronizationContext mainThread)

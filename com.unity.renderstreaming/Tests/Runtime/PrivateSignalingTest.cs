@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Threading;
 using System.Diagnostics;
@@ -99,7 +99,10 @@ namespace Unity.RenderStreaming
         public void OneTimeTearDown()
         {
             m_ServerProcess.Kill();
-            m_ServerProcess.WaitForExit();
+            while (!m_ServerProcess.HasExited)
+            {
+                m_ServerProcess.Refresh();
+            }
             m_ServerProcess.Dispose();
             m_ServerProcess = null;
         }
