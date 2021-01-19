@@ -50,15 +50,13 @@ test_{{ platform.name }}:
       only:
       - "/.*/"
       except:
-      - "master"    
+      - "master"
   artifacts:
     logs:
       paths:
         - "WebApp/output.log"
         - "WebApp/coverage/**/*"
   dependencies:
-    {% for platform in platforms %}
     - .yamato/upm-ci-webapp.yml#pack_{{ platform.name }}
-    {% endfor %}
 {% endfor %}
 {% endfor %}
